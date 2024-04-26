@@ -6,3 +6,4 @@
 #include <stdio.h>
 
 #include "dw_io.h"
+#include "inst.h"
