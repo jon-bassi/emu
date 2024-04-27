@@ -8,4 +8,4 @@
 // 200 MB
 #define MAX_BUFFER_SIZE     200000000
 
-uint8_t* dw_fread(const char* filname);
+long dw_fread(const char* filname, uint8_t** data);
