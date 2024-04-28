@@ -17,15 +17,18 @@ int main(int argc, void** argv)
         return 1;
     }
 
+    size_t filenameLen = strlen(filename);
+    char* outFile = malloc(filenameLen + 5);
+    memset(outFile,0x0,filenameLen + 5);
+    memcpy(outFile,filename,filenameLen);
+    memcpy(outFile + filenameLen,".lst",4);
+
     uint8_t* bin = NULL;
     long binLen = dw_fread(filename, &bin);
 
-    // printf("%x%x%x%x\n",bin[0],bin[1],bin[2],bin[3]);
-
-    
-
-
     int pc = 0;
+    FILE* writer = fopen(outFile,"w");
+
     while (pc < binLen)
     {
         uint8_t opcode = bin[pc];
@@ -51,11 +54,13 @@ int main(int argc, void** argv)
 
             snprintf(opcodeStr,sizeof(opcodeStr),curOpcode.name,opcodeData);
             printf("%04x: %s %s\n",pc,instBytes,opcodeStr);
+            fprintf(writer,"%04x: %s %s\n",pc,instBytes,opcodeStr);
         }
         else
         {
             snprintf(instBytes,sizeof(instBytes),"%02x      ",bin[pc]);
             printf("%04x: %s %s\n",pc,instBytes,curOpcode.name);
+            fprintf(writer,"%04x: %s %s\n",pc,instBytes,curOpcode.name);
         }
         
         pc = pc + curOpcode.len;
