@@ -46,27 +46,35 @@ int main(int argc, void** argv)
         switch (*opcode)
         {
             case 0x00: // NOP
+            {
                 progState.registers.pc += 1;
                 break;
+            }
             case 0x01: // LXI B,d16
+            {
                 progState.registers.pc += 3;
 
                 progState.registers.c = opcode[1];  // lo
                 progState.registers.b = opcode[2];  // hi
                 break;
+            }
             case 0x02: // STAX B
+            {
                 progState.registers.pc += 1;
 
                 uint16_t addr = ((progState.registers.b << 8) | progState.registers.c) - RAM_START;
                 progState.memory.ram[addr] = progState.registers.a;
                 break;
+            }
             case 0x03: // INX B
+            {
                 progState.registers.pc += 1;
 
                 uint16_t value = ((progState.registers.b << 8) | progState.registers.c) + 1;
-                progState.registers.b = (value >> 8) && 0xff;
+                progState.registers.b = (value >> 8) & 0xff;
                 progState.registers.c = value & 0xff;
                 break;
+            }
             case 0x04: UndefinedInstruction(&progState); break;
             case 0x05: UndefinedInstruction(&progState); break;
             case 0x06: UndefinedInstruction(&progState); break;
@@ -195,7 +203,51 @@ int main(int argc, void** argv)
             case 0x7F: UndefinedInstruction(&progState); break;
 
             /* ARITHMETIC GROUP */
-            case 0x80: UndefinedInstruction(&progState); break;
+            case 0x80:  // ADD B
+            {
+                progState.registers.pc += 1;
+
+                uint16_t result = (uint16_t) progState.registers.a + (uint16_t) progState.registers.b;
+
+                // zero flag
+                // if result is zero set flag to 1
+                // else reset to 0
+                if ((result & 0xFF) == 0x0)
+                {
+                    progState.registers.flags.z = 1;
+                }
+                else
+                {
+                    progState.registers.flags.z = 0;
+                }
+
+                // sign flag
+                // if bit 7 is 1 set sign flag
+                // else reset
+                if (result & 0x80)
+                {
+                    progState.registers.flags.s = 1;
+                }
+                else
+                {
+                    progState.registers.flags.s = 0;
+                }
+
+                // carry flag
+                // if result is larger than 8 bits set carry flag
+                // else reset
+                if (result > 0xFF)
+                {
+                    progState.registers.flags.c = 1;
+                }
+                else
+                {
+                    progState.registers.flags.c = 0;
+                }
+
+
+                break;
+            }
             case 0x81: UndefinedInstruction(&progState); break;
             case 0x82: UndefinedInstruction(&progState); break;
             case 0x83: UndefinedInstruction(&progState); break;
@@ -262,7 +314,13 @@ int main(int argc, void** argv)
             case 0xC0: UndefinedInstruction(&progState); break;
             case 0xC1: UndefinedInstruction(&progState); break;
             case 0xC2: UndefinedInstruction(&progState); break;
-            case 0xC3: UndefinedInstruction(&progState); break;
+            case 0xC3:  // JMP a16
+            {
+                progState.registers.pc += 3;
+                uint16_t addr = (opcode[2] << 8) | opcode[1];
+                progState.registers.pc = addr;
+                break;
+            }
             case 0xC4: UndefinedInstruction(&progState); break;
             case 0xC5: UndefinedInstruction(&progState); break;
             case 0xC6: UndefinedInstruction(&progState); break;
