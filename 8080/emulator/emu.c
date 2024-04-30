@@ -218,7 +218,7 @@ int main(int argc, char** argv)
             case 0x3F: UndefinedInstruction(&progState); break;
             
             /* MOV GROUP */
-            case 0x40: UndefinedInstruction(&progState); break;
+            case 0x40: UndefinedInstruction(&progState); break;  // & with 0x78 to get 0x40/0x48/0x50/0x58... etc for first op
             case 0x41: UndefinedInstruction(&progState); break;
             case 0x42: UndefinedInstruction(&progState); break;
             case 0x43: UndefinedInstruction(&progState); break;
@@ -272,7 +272,7 @@ int main(int argc, char** argv)
             case 0x73: UndefinedInstruction(&progState); break;
             case 0x74: UndefinedInstruction(&progState); break;
             case 0x75: UndefinedInstruction(&progState); break;
-            case 0x76: UndefinedInstruction(&progState); break;
+            case 0x76: UndefinedInstruction(&progState); break;  // HLT
             case 0x77: UndefinedInstruction(&progState); break;
             case 0x78: UndefinedInstruction(&progState); break;
             case 0x79: UndefinedInstruction(&progState); break;
@@ -380,30 +380,298 @@ int main(int argc, char** argv)
                 progState.registers.a = (uint8_t) (result & 0xFF);
                 break;
             }
-            case 0x88: UndefinedInstruction(&progState); break;
-            case 0x89: UndefinedInstruction(&progState); break;
-            case 0x8A: UndefinedInstruction(&progState); break;
-            case 0x8B: UndefinedInstruction(&progState); break;
-            case 0x8C: UndefinedInstruction(&progState); break;
-            case 0x8D: UndefinedInstruction(&progState); break;
-            case 0x8E: UndefinedInstruction(&progState); break;
-            case 0x8F: UndefinedInstruction(&progState); break;
-            case 0x90: UndefinedInstruction(&progState); break;
-            case 0x91: UndefinedInstruction(&progState); break;
-            case 0x92: UndefinedInstruction(&progState); break;
-            case 0x93: UndefinedInstruction(&progState); break;
-            case 0x94: UndefinedInstruction(&progState); break;
-            case 0x95: UndefinedInstruction(&progState); break;
-            case 0x96: UndefinedInstruction(&progState); break;
-            case 0x97: UndefinedInstruction(&progState); break;
-            case 0x98: UndefinedInstruction(&progState); break;
-            case 0x99: UndefinedInstruction(&progState); break;
-            case 0x9A: UndefinedInstruction(&progState); break;
-            case 0x9B: UndefinedInstruction(&progState); break;
-            case 0x9C: UndefinedInstruction(&progState); break;
-            case 0x9D: UndefinedInstruction(&progState); break;
-            case 0x9E: UndefinedInstruction(&progState); break;
-            case 0x9F: UndefinedInstruction(&progState); break;
+            case 0x88:  // ADC B
+            case 0x89:  // ADC C
+            case 0x8A:  // ADC D
+            case 0x8B:  // ADC E
+            case 0x8C:  // ADC H
+            case 0x8D:  // ADC L
+            case 0x8E:  // ADC M
+            case 0x8F:  // ADC A
+            {
+                progState.registers.pc += 1;
+
+                uint16_t operand = 0;
+
+                switch((*opcode - 0x8) & 0x0F)
+                {
+                    case 0x0:
+                        operand = (uint16_t) progState.registers.b + progState.registers.flags.c;
+                        break;
+                    case 0x1:
+                        operand = (uint16_t) progState.registers.c + progState.registers.flags.c;
+                        break;
+                    case 0x2:
+                        operand = (uint16_t) progState.registers.d + progState.registers.flags.c;
+                        break;
+                    case 0x3:
+                        operand = (uint16_t) progState.registers.e + progState.registers.flags.c;
+                        break;
+                    case 0x4:
+                        operand = (uint16_t) progState.registers.h + progState.registers.flags.c;
+                        break;
+                    case 0x5:
+                        operand = (uint16_t) progState.registers.l + progState.registers.flags.c;
+                        break;
+                    case 0x6:
+                        operand = (uint16_t) progState.memory.rom[((progState.registers.h << 8) | progState.registers.l)] + progState.registers.flags.c;
+                        break;
+                    case 0x7:
+                        operand = (uint16_t) progState.registers.a + progState.registers.flags.c;
+                        break;
+                }
+
+                uint16_t result = (uint16_t) progState.registers.a + operand;
+
+                // zero flag
+                // if result is zero set flag to 1
+                // else reset to 0
+                if ((result & 0xFF) == 0x0)
+                {
+                    progState.registers.flags.z = 1;
+                }
+                else
+                {
+                    progState.registers.flags.z = 0;
+                }
+
+                // sign flag
+                // if bit 7 is 1 set sign flag
+                // else reset
+                if (result & 0x80)
+                {
+                    progState.registers.flags.s = 1;
+                }
+                else
+                {
+                    progState.registers.flags.s = 0;
+                }
+
+                // carry flag
+                // if result is larger than 8 bits set carry flag
+                // else reset
+                if (result > 0xFF)
+                {
+                    progState.registers.flags.c = 1;
+                }
+                else
+                {
+                    progState.registers.flags.c = 0;
+                }
+
+                // ac flag
+                if (((progState.registers.a & 0xF) + (operand & 0xF)) > 0xF)
+                {
+                    progState.registers.flags.ac = 1;
+                }
+                else
+                {
+                    progState.registers.flags.ac = 0;
+                }
+
+                // parity flag
+                progState.registers.flags.p = parity(result, 8);
+
+
+                progState.registers.a = (uint8_t) (result & 0xFF);
+                break;
+            }
+            case 0x90:  // SUB B
+            case 0x91:  // SUB C
+            case 0x92:  // SUB D
+            case 0x93:  // SUB E
+            case 0x94:  // SUB H
+            case 0x95:  // SUB L
+            case 0x96:  // SUB M
+            case 0x97:  // SUB A
+            {
+                progState.registers.pc += 1;
+
+                uint16_t operand = 0;
+
+                // twos compliment by negating and adding 1 to the operand
+                switch(*opcode & 0x0F)
+                {
+                    case 0x0:
+                        operand = (uint16_t) ~progState.registers.b + 1;
+                        break;
+                    case 0x1:
+                        operand = (uint16_t) ~progState.registers.c + 1;
+                        break;
+                    case 0x2:
+                        operand = (uint16_t) ~progState.registers.d + 1;
+                        break;
+                    case 0x3:
+                        operand = (uint16_t) ~progState.registers.e + 1;
+                        break;
+                    case 0x4:
+                        operand = (uint16_t) ~progState.registers.h + 1;
+                        break;
+                    case 0x5:
+                        operand = (uint16_t) ~progState.registers.l + 1;
+                        break;
+                    case 0x6:
+                        operand = (uint16_t) ~(progState.memory.rom[((progState.registers.h << 8) | progState.registers.l)]) + 1;
+                        break;
+                    case 0x7:
+                        operand = (uint16_t) ~progState.registers.a + 1;
+                        break;
+                }
+                
+                uint16_t result = (uint16_t) progState.registers.a + operand;
+
+                // zero flag
+                // if result is zero set flag to 1
+                // else reset to 0
+                if ((result & 0xFF) == 0x0)
+                {
+                    progState.registers.flags.z = 1;
+                }
+                else
+                {
+                    progState.registers.flags.z = 0;
+                }
+
+                // sign flag
+                // if bit 7 is 1 set sign flag
+                // else reset
+                if (result & 0x80)
+                {
+                    progState.registers.flags.s = 1;
+                }
+                else
+                {
+                    progState.registers.flags.s = 0;
+                }
+
+                // carry flag
+                // if result is larger than 8 bits reset carry flag (subtraction specific)
+                // else set to 1
+                if (result > 0xFF)
+                {
+                    progState.registers.flags.c = 0;
+                }
+                else
+                {
+                    progState.registers.flags.c = 1;
+                }
+
+                // ac flag
+                if (((progState.registers.a & 0xF) + (operand & 0xF)) > 0xF)
+                {
+                    progState.registers.flags.ac = 1;
+                }
+                else
+                {
+                    progState.registers.flags.ac = 0;
+                }
+
+                // parity flag
+                progState.registers.flags.p = parity(result, 8);
+
+
+                progState.registers.a = (uint8_t) (result & 0xFF);
+
+                break;
+            }
+            case 0x98:  // SBB B
+            case 0x99:  // SBB C
+            case 0x9A:  // SBB D
+            case 0x9B:  // SBB E
+            case 0x9C:  // SBB H
+            case 0x9D:  // SBB L
+            case 0x9E:  // SBB M
+            case 0x9F:  // SBB A
+            {
+                progState.registers.pc += 1;
+
+                uint16_t operand = 0;
+
+                // twos compliment by negating and adding 1 to the operand
+                switch((*opcode - 0x8) & 0x0F)
+                {
+                    case 0x0:
+                        operand = (uint16_t) ~progState.registers.b + 1 + progState.registers.flags.c;
+                        break;
+                    case 0x1:
+                        operand = (uint16_t) ~progState.registers.c + 1 + progState.registers.flags.c;
+                        break;
+                    case 0x2:
+                        operand = (uint16_t) ~progState.registers.d + 1 + progState.registers.flags.c;
+                        break;
+                    case 0x3:
+                        operand = (uint16_t) ~progState.registers.e + 1 + progState.registers.flags.c;
+                        break;
+                    case 0x4:
+                        operand = (uint16_t) ~progState.registers.h + 1 + progState.registers.flags.c;
+                        break;
+                    case 0x5:
+                        operand = (uint16_t) ~progState.registers.l + 1 + progState.registers.flags.c;
+                        break;
+                    case 0x6:
+                        operand = (uint16_t) ~(progState.memory.rom[((progState.registers.h << 8) | progState.registers.l)]) + 1 + progState.registers.flags.c;
+                        break;
+                    case 0x7:
+                        operand = (uint16_t) ~progState.registers.a + 1 + progState.registers.flags.c;
+                        break;
+                }
+                
+                uint16_t result = (uint16_t) progState.registers.a + operand;
+
+                // zero flag
+                // if result is zero set flag to 1
+                // else reset to 0
+                if ((result & 0xFF) == 0x0)
+                {
+                    progState.registers.flags.z = 1;
+                }
+                else
+                {
+                    progState.registers.flags.z = 0;
+                }
+
+                // sign flag
+                // if bit 7 is 1 set sign flag
+                // else reset
+                if (result & 0x80)
+                {
+                    progState.registers.flags.s = 1;
+                }
+                else
+                {
+                    progState.registers.flags.s = 0;
+                }
+
+                // carry flag
+                // if result is larger than 8 bits reset carry flag (subtraction specific)
+                // else set to 1
+                if (result > 0xFF)
+                {
+                    progState.registers.flags.c = 0;
+                }
+                else
+                {
+                    progState.registers.flags.c = 1;
+                }
+
+                // ac flag
+                if (((progState.registers.a & 0xF) + (operand & 0xF)) > 0xF)
+                {
+                    progState.registers.flags.ac = 1;
+                }
+                else
+                {
+                    progState.registers.flags.ac = 0;
+                }
+
+                // parity flag
+                progState.registers.flags.p = parity(result, 8);
+
+
+                progState.registers.a = (uint8_t) (result & 0xFF);
+
+                break;
+            }
             case 0xA0: UndefinedInstruction(&progState); break;
             case 0xA1: UndefinedInstruction(&progState); break;
             case 0xA2: UndefinedInstruction(&progState); break;
@@ -436,6 +704,8 @@ int main(int argc, char** argv)
             case 0xBD: UndefinedInstruction(&progState); break;
             case 0xBE: UndefinedInstruction(&progState); break;
             case 0xBF: UndefinedInstruction(&progState); break;
+
+            /* GROUP */
             case 0xC0: UndefinedInstruction(&progState); break;
             case 0xC1: UndefinedInstruction(&progState); break;
             case 0xC2: UndefinedInstruction(&progState); break;

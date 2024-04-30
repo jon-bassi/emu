@@ -38,7 +38,7 @@ typedef struct
 } Registers;
 
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     uint8_t rom[0x2000];
     uint8_t ram[0x400];
@@ -47,6 +47,6 @@ typedef struct
 
 typedef struct
 {
-    Registers registers;
     Memory memory;
+    Registers registers;
 } State;
