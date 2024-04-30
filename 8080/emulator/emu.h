@@ -40,7 +40,7 @@ typedef struct
 
 typedef struct
 {
-    uint8_t* rom;
+    uint8_t rom[0x2000];
     uint8_t ram[0x400];
     uint8_t vram[0x1c00];
 } Memory;

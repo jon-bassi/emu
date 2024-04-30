@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     State progState;
     memset(&progState,0x0,sizeof(progState));
 
-    progState.memory.rom = bin;
+    memcpy(progState.memory.rom, bin, binLen);
     
     
     while (1)
@@ -131,8 +131,8 @@ int main(int argc, char** argv)
             {
                 progState.registers.pc += 1;
 
-                uint16_t addr = ((progState.registers.b << 8) | progState.registers.c) - RAM_START;
-                progState.memory.ram[addr] = progState.registers.a;
+                uint16_t addr = ((progState.registers.b << 8) | progState.registers.c);
+                progState.memory.rom[addr] = progState.registers.a;
                 break;
             }
             case 0x03: // INX B
@@ -318,7 +318,7 @@ int main(int argc, char** argv)
                         operand = (uint16_t) progState.registers.l;
                         break;
                     case 0x6:
-                        operand = (uint16_t) progState.memory.ram[((progState.registers.h << 8) | progState.registers.l) - RAM_START];
+                        operand = (uint16_t) progState.memory.rom[((progState.registers.h << 8) | progState.registers.l)];
                         break;
                     case 0x7:
                         operand = (uint16_t) progState.registers.a;
