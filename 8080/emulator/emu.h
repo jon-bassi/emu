@@ -1,8 +1,10 @@
 #pragma once
 
 #include <stdint.h>
+#include <Windows.h>
 
 #include "dw_io.h"
+#include <ncurses/ncurses.h>
 
 
 
@@ -13,11 +15,11 @@
 
 typedef struct
 {
-    uint8_t s;  // sign
-    uint8_t z;  // zero
-    uint8_t a;  // aux carry
-    uint8_t p;  // parity
-    uint8_t c;  // carry
+    uint8_t s;   // sign
+    uint8_t z;   // zero
+    uint8_t ac;  // aux carry
+    uint8_t p;   // parity
+    uint8_t c;   // carry
 } Flags;
 
 

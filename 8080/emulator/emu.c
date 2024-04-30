@@ -1,20 +1,86 @@
 #include "emu.h"
 
+// #define DEBUG 1
 
+void exit_w(int code)
+{
+    // printf("Press ENTER key to Continue\n");
+    move(10,7);
+    printw("hit any key to exit...");
+    getch();
+    endwin();
+    exit(code);
+}
+
+void nc_logState(State* progState)
+{
+    clear();
+    move(0,3);
+    printw("REGISTERS:");
+    move(1,5);
+    printw("a:   %02x", progState->registers.a);
+    move(2,5);
+    printw("b:   %02x   c: %02x   bx: %04x", progState->registers.b, progState->registers.c, ((progState->registers.b << 8) | progState->registers.c));
+    move(3,5);
+    printw("d:   %02x   e: %02x   dx: %04x", progState->registers.d, progState->registers.e, ((progState->registers.d << 8) | progState->registers.e));
+    move(4,5);
+    printw("h:   %02x   l: %02x   hx: %04x", progState->registers.h, progState->registers.l, ((progState->registers.h << 8) | progState->registers.l));
+    move(5,5);
+    printw("sp:  %04x pc:  %04x", progState->registers.sp, progState->registers.pc);
+    move(6,3);
+    printw("FLAGS:");
+    move(7,5);
+    printw("s: %01x  z:  %01x  ac: %01x  p: %01x  c: %01x", progState->registers.flags.s, progState->registers.flags.z,
+                                                            progState->registers.flags.ac, progState->registers.flags.p,
+                                                            progState->registers.flags.c);
+    refresh();
+}
 
 void UndefinedInstruction(State* programState)
 {
-    printf("[!] error: Undefined Instruciton at PC: %04x\n",programState->registers.pc);
-    exit(1);
+    // if ncurses
+    move(9,3);
+    printw("[!] error: Undefined Instruciton at PC: %04x\n", programState->registers.pc);
+    refresh();
+
+    // printf("[!] error: Undefined Instruciton at PC: %04x\n", programState->registers.pc);
+    exit_w(1);
+}
+
+int parity(int x, int size)
+{
+	int i;
+	int p = 0;
+	x = (x & ((1<<size)-1));
+	for (i=0; i<size; i++)
+	{
+		if (x & 0x1) p++;
+		x = x >> 1;
+	}
+	return (0 == (p & 0x1));
 }
 
 
+// int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+// {
+// // #ifdef DEBUG
+//     // HWND h;
+//     // h = CreateWindow("BUTTON", "Hit me", WS_OVERLAPPEDWINDOW, 350, 300, 500, 500, 0, 0, hInstance, 0);
+//     // ShowWindow(h, nCmdShow);
 
+//     // MessageBox(0, "Press Me", "Waiting", MB_OK);
+// // #else
+//     
+//     // printf("%i %s\n",__argc, __argv[0]);
+//     start(__argc, __argv);
+// // #endif
 
+// }
 
-
-int main(int argc, void** argv)
-{
+int main(int argc, char** argv)
+{    
+    initscr(); // init ncurses
+    
     // parse args
     char* filename = '\0';
 
@@ -42,6 +108,9 @@ int main(int argc, void** argv)
     while (1)
     {
         uint8_t* opcode = &(progState.memory.rom[progState.registers.pc]);
+
+        // Sleep(100);
+        nc_logState(&progState);
         
         switch (*opcode)
         {
@@ -77,7 +146,13 @@ int main(int argc, void** argv)
             }
             case 0x04: UndefinedInstruction(&progState); break;
             case 0x05: UndefinedInstruction(&progState); break;
-            case 0x06: UndefinedInstruction(&progState); break;
+            case 0x06:
+            {
+                progState.registers.pc += 2;
+
+                progState.registers.b = opcode[1];
+                break;
+            }
             case 0x07: UndefinedInstruction(&progState); break;
             case 0x08: UndefinedInstruction(&progState); break;
             case 0x09: UndefinedInstruction(&progState); break;
@@ -120,7 +195,13 @@ int main(int argc, void** argv)
             case 0x2E: UndefinedInstruction(&progState); break;
             case 0x2F: UndefinedInstruction(&progState); break;
             case 0x30: UndefinedInstruction(&progState); break;
-            case 0x31: UndefinedInstruction(&progState); break;
+            case 0x31:  // LXI SP,d16
+            {
+                progState.registers.pc += 3;
+
+                progState.registers.sp = ((opcode[2] << 8) | opcode[1]);
+                break;
+            }
             case 0x32: UndefinedInstruction(&progState); break;
             case 0x33: UndefinedInstruction(&progState); break;
             case 0x34: UndefinedInstruction(&progState); break;
@@ -204,10 +285,47 @@ int main(int argc, void** argv)
 
             /* ARITHMETIC GROUP */
             case 0x80:  // ADD B
+            case 0x81:  // ADD C
+            case 0x82:  // ADD D
+            case 0x83:  // ADD E
+            case 0x84:  // ADD H
+            case 0x85:  // ADD L
+            case 0x86:  // ADD M
+            case 0x87:  // ADD A
             {
                 progState.registers.pc += 1;
 
-                uint16_t result = (uint16_t) progState.registers.a + (uint16_t) progState.registers.b;
+                uint16_t operand = 0;
+
+                switch(*opcode & 0x0F)
+                {
+                    case 0x0:
+                        operand = (uint16_t) progState.registers.b;
+                        break;
+                    case 0x1:
+                        operand = (uint16_t) progState.registers.c;
+                        break;
+                    case 0x2:
+                        operand = (uint16_t) progState.registers.d;
+                        break;
+                    case 0x3:
+                        operand = (uint16_t) progState.registers.e;
+                        break;
+                    case 0x4:
+                        operand = (uint16_t) progState.registers.h;
+                        break;
+                    case 0x5:
+                        operand = (uint16_t) progState.registers.l;
+                        break;
+                    case 0x6:
+                        operand = (uint16_t) progState.memory.ram[((progState.registers.h << 8) | progState.registers.l) - RAM_START];
+                        break;
+                    case 0x7:
+                        operand = (uint16_t) progState.registers.a;
+                        break;
+                }
+
+                uint16_t result = (uint16_t) progState.registers.a + operand;
 
                 // zero flag
                 // if result is zero set flag to 1
@@ -245,16 +363,23 @@ int main(int argc, void** argv)
                     progState.registers.flags.c = 0;
                 }
 
+                // ac flag
+                if (((progState.registers.a & 0xF) + (operand & 0xF)) > 0xF)
+                {
+                    progState.registers.flags.ac = 1;
+                }
+                else
+                {
+                    progState.registers.flags.ac = 0;
+                }
 
+                // parity flag
+                progState.registers.flags.p = parity(result, 8);
+
+
+                progState.registers.a = (uint8_t) (result & 0xFF);
                 break;
             }
-            case 0x81: UndefinedInstruction(&progState); break;
-            case 0x82: UndefinedInstruction(&progState); break;
-            case 0x83: UndefinedInstruction(&progState); break;
-            case 0x84: UndefinedInstruction(&progState); break;
-            case 0x85: UndefinedInstruction(&progState); break;
-            case 0x86: UndefinedInstruction(&progState); break;
-            case 0x87: UndefinedInstruction(&progState); break;
             case 0x88: UndefinedInstruction(&progState); break;
             case 0x89: UndefinedInstruction(&progState); break;
             case 0x8A: UndefinedInstruction(&progState); break;
